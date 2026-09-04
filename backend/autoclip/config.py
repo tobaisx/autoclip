@@ -34,10 +34,10 @@ KEYRING_SERVICE = "autoclip"
 #: stored under the old name aren't silently lost; writes always use the new one.
 LEGACY_KEYRING_SERVICE = "clipforge"
 
-ProviderName = Literal["anthropic", "openai", "gemini", "ollama"]
+ProviderName = Literal["anthropic", "openai", "groq", "gemini", "ollama"]
 
 #: Providers that authenticate with an API key. Ollama runs locally and needs none.
-KEYED_PROVIDERS: tuple[str, ...] = ("anthropic", "openai", "gemini")
+KEYED_PROVIDERS: tuple[str, ...] = ("anthropic", "openai", "groq", "gemini")
 
 #: Extra secrets that aren't tied to a provider.
 HF_TOKEN_KEY = "huggingface_token"
@@ -102,6 +102,10 @@ class Settings(BaseModel):
         default_factory=lambda: {
             "anthropic": ProviderSettings(model="claude-sonnet-5"),
             "openai": ProviderSettings(model="gpt-4o"),
+            "groq": ProviderSettings(
+                model="openai/gpt-oss-20b",
+                base_url="https://api.groq.com/openai/v1",
+            ),
             "gemini": ProviderSettings(model="gemini-2.0-flash"),
             "ollama": ProviderSettings(model="", base_url="http://localhost:11434"),
         }

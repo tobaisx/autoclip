@@ -19,6 +19,7 @@ from .base import (
     TranscriptWindow,
 )
 from .gemini_provider import GeminiProvider
+from .groq_provider import GroqProvider
 from .ollama_provider import OllamaProvider
 from .openai_provider import OpenAIProvider
 
@@ -29,6 +30,7 @@ __all__ = [
     "ClipCandidates",
     "DetectionConfig",
     "GeminiProvider",
+    "GroqProvider",
     "LLMProvider",
     "OllamaProvider",
     "OpenAIProvider",
@@ -44,6 +46,7 @@ PROVIDERS: dict[str, type[LLMProvider]] = {
     "anthropic": AnthropicProvider,
     "openai": OpenAIProvider,
     "gemini": GeminiProvider,
+    "groq": GroqProvider,
     "ollama": OllamaProvider,
 }
 

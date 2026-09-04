@@ -368,6 +368,7 @@ class TestProviderStatus:
         assert {s["name"] for s in statuses} == {
             "anthropic",
             "openai",
+            "groq",
             "gemini",
             "ollama",
         }

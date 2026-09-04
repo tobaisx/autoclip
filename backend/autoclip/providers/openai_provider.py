@@ -53,7 +53,7 @@ class OpenAIProvider(LLMProvider):
             raise ProviderError(
                 "No API key is set for the OpenAI-compatible provider.",
                 provider=self.name,
-                hint="Add one with `autoclip config set-secret openai`.",
+                hint=f"Add one with `autoclip config set-secret {self.name}`.",
             )
 
         kwargs = {"api_key": key}
@@ -129,7 +129,7 @@ def _translate(exc: Exception, provider: str, model: str) -> ProviderError:
         return ProviderError(
             "The endpoint rejected the API key.",
             provider=provider,
-            hint="Re-add it with `autoclip config set-secret openai`.",
+            hint=f"Re-add it with `autoclip config set-secret {provider}`.",
         )
     if "429" in lowered or "rate limit" in lowered:
         return ProviderError(

@@ -6,6 +6,7 @@ import { ErrorNote } from '../components/ErrorNote'
 const SECRET_LABELS: Record<string, string> = {
   anthropic: 'Anthropic API key',
   openai: 'OpenAI-compatible API key',
+  groq: 'Groq API key',
   gemini: 'Google Gemini API key',
   huggingface_token: 'HuggingFace token',
 }
@@ -115,7 +116,7 @@ export function Settings() {
           />
           <Field
             label="Base URL"
-            hint="Point at OpenRouter, Groq, DeepSeek, or a local server."
+            hint="Optional for providers with a built-in endpoint."
             value={settings.providers[settings.active_provider]?.base_url ?? ''}
             placeholder="https://…"
             onCommit={(value) =>
