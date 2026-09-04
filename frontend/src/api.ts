@@ -229,11 +229,29 @@ export const api = {
 
   listSources: () => request<Source[]>('/api/sources'),
 
-  ingestYouTube: (url: string, cookiesFromBrowser?: string) =>
-    request<Source>('/api/sources/youtube', {
+  ingestYouTube: (
+    url: string,
+    cookiesFromBrowser?: string,
+    cookiesFile?: File | null,
+  ) => {
+    if (cookiesFile) {
+      const form = new FormData()
+      form.append('url', url)
+      form.append('cookies_file', cookiesFile)
+      return request<Source>('/api/sources/youtube-with-cookies', {
+        method: 'POST',
+        body: form,
+      })
+    }
+
+    return request<Source>('/api/sources/youtube', {
       method: 'POST',
-      body: JSON.stringify({ url, cookies_from_browser: cookiesFromBrowser || null }),
-    }),
+      body: JSON.stringify({
+        url,
+        cookies_from_browser: cookiesFromBrowser || null,
+      }),
+    })
+  },
 
   uploadSource: (file: File) => {
     const form = new FormData()

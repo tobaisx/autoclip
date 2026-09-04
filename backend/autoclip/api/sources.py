@@ -8,7 +8,7 @@ import shutil
 import tempfile
 from pathlib import Path
 
-from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 
 from ..config import load as load_settings
 from ..db import store
@@ -58,6 +58,102 @@ async def ingest_youtube(payload: YouTubeIngestIn) -> SourceOut:
         raise HTTPException(
             status_code=422, detail={"message": str(exc), "hint": exc.hint}
         ) from exc
+
+    await asyncio.to_thread(store.create_source, source)
+    return SourceOut.of(source)
+
+
+@router.post("/youtube-with-cookies", response_model=SourceOut, status_code=201)
+async def ingest_youtube_with_cookies(
+    url: str = Form(...),
+    cookies_file: UploadFile = File(...),
+) -> SourceOut:
+    """Download a YouTube video using a temporary uploaded cookies.txt.
+
+    The cookie file is never stored in AutoClip's runtime data or database.
+    It exists only for the duration of this request.
+    """
+    if not ingest.is_youtube_url(url):
+        await cookies_file.close()
+        raise HTTPException(status_code=400, detail="That is not a YouTube URL.")
+
+    filename = Path(cookies_file.filename or "")
+    if filename.suffix.lower() != ".txt":
+        await cookies_file.close()
+        raise HTTPException(
+            status_code=415,
+            detail={
+                "message": "The cookies file must be a .txt file.",
+                "hint": "Export cookies in Netscape/Mozilla cookies.txt format.",
+            },
+        )
+
+    max_cookie_bytes = 2 * 1024 * 1024
+    staging_path: Path | None = None
+
+    try:
+        with tempfile.NamedTemporaryFile(
+            delete=False, suffix=".txt"
+        ) as staging:
+            staging_path = Path(staging.name)
+            staging_path.chmod(0o600)
+
+            total = 0
+            header = b""
+
+            while chunk := await cookies_file.read(64 * 1024):
+                total += len(chunk)
+                if total > max_cookie_bytes:
+                    raise HTTPException(
+                        status_code=413,
+                        detail={
+                            "message": "The cookies file is too large.",
+                            "hint": "A normal YouTube cookies.txt file should be much smaller.",
+                        },
+                    )
+
+                if len(header) < 4096:
+                    header += chunk[:4096 - len(header)]
+
+                staging.write(chunk)
+
+        first_line = header.splitlines()[0].strip() if header.splitlines() else b""
+        valid_headers = {
+            b"# HTTP Cookie File",
+            b"# Netscape HTTP Cookie File",
+        }
+        if first_line not in valid_headers:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "message": "Invalid cookies.txt format.",
+                    "hint": (
+                        "Export the cookies as a Netscape/Mozilla cookies.txt file. "
+                        "The first line must identify the HTTP Cookie File format."
+                    ),
+                },
+            )
+
+        settings = load_settings().ingest
+
+        source = await asyncio.to_thread(
+            ingest.ingest_youtube,
+            url,
+            settings,
+            cookies_path=staging_path,
+        )
+
+    except HTTPException:
+        raise
+    except ingest.IngestError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail={"message": str(exc), "hint": exc.hint},
+        ) from exc
+    finally:
+        await cookies_file.close()
+        if staging_path is not None:
+            staging_path.unlink(missing_ok=True)
 
     await asyncio.to_thread(store.create_source, source)
     return SourceOut.of(source)

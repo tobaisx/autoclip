@@ -21,7 +21,10 @@ export function Ingest() {
   const [overrides, setOverrides] = useState<JobSettingsOverrides>({})
   const [advancedOpen, setAdvancedOpen] = useState(false)
   const [dragging, setDragging] = useState(false)
+  const [youtubeCookies, setYoutubeCookies] = useState('')
+  const [youtubeCookiesFile, setYoutubeCookiesFile] = useState<File | null>(null)
   const fileInput = useRef<HTMLInputElement>(null)
+  const cookiesInput = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     api.listJobs(8).then(setJobs).catch(() => undefined)
@@ -48,7 +51,19 @@ export function Ingest() {
   const submitUrl = (event: React.FormEvent) => {
     event.preventDefault()
     if (!url.trim()) return
-    void start('url', () => api.ingestYouTube(url.trim()))
+
+    if (youtubeCookies === 'file' && !youtubeCookiesFile) {
+      setError(new Error('Choose a cookies.txt file first.'))
+      return
+    }
+
+    void start('url', () =>
+      api.ingestYouTube(
+        url.trim(),
+        youtubeCookies !== 'file' ? youtubeCookies : undefined,
+        youtubeCookies === 'file' ? youtubeCookiesFile : undefined,
+      ),
+    )
   }
 
   const submitFile = (file: File) => void start('file', () => api.uploadSource(file))
@@ -99,6 +114,64 @@ export function Ingest() {
           <p className="mt-3 text-xs leading-relaxed text-ink-500">
             Only download video you own or have the rights to process.
           </p>
+
+          <div className="mt-7 max-w-xl">
+            <label className="block">
+              <span className="eyebrow">YouTube Cookies</span>
+              <select
+                className="field mt-1 cursor-pointer text-sm"
+                value={youtubeCookies}
+                onChange={(e) => {
+                  const value = e.target.value
+                  setYoutubeCookies(value)
+                  if (value !== 'file') {
+                    setYoutubeCookiesFile(null)
+                    if (cookiesInput.current) cookiesInput.current.value = ''
+                  }
+                }}
+                disabled={busy !== null}
+              >
+                <option value="" className="bg-ink-850">None</option>
+                <option value="chrome" className="bg-ink-850">Chrome</option>
+                <option value="brave" className="bg-ink-850">Brave</option>
+                <option value="firefox" className="bg-ink-850">Firefox</option>
+                <option value="edge" className="bg-ink-850">Edge</option>
+                <option value="chromium" className="bg-ink-850">Chromium</option>
+                <option value="safari" className="bg-ink-850">Safari</option>
+                <option value="file" className="bg-ink-850">Upload cookies.txt</option>
+              </select>
+              <span className="mt-1.5 block text-xs leading-snug text-ink-500">
+                Use browser cookies when available, or upload a Netscape/Mozilla cookies.txt.
+                The uploaded file is used temporarily and then deleted.
+              </span>
+            </label>
+
+            {youtubeCookies === 'file' && (
+              <div className="mt-3 flex items-center gap-3">
+                <button
+                  type="button"
+                  className="btn btn-quiet"
+                  onClick={() => cookiesInput.current?.click()}
+                  disabled={busy !== null}
+                >
+                  Choose File
+                </button>
+                <span className="truncate text-xs text-ink-400">
+                  {youtubeCookiesFile?.name ?? 'No file selected'}
+                </span>
+                <input
+                  ref={cookiesInput}
+                  type="file"
+                  className="hidden"
+                  accept=".txt,text/plain"
+                  onChange={(e) => {
+                    setYoutubeCookiesFile(e.target.files?.[0] ?? null)
+                    e.target.value = ''
+                  }}
+                />
+              </div>
+            )}
+          </div>
 
           <AdvancedOptions
             open={advancedOpen}

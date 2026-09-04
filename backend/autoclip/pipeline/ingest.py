@@ -80,6 +80,7 @@ def ingest_youtube(
     settings: IngestSettings | None = None,
     *,
     on_progress: Callable[[float], None] | None = None,
+    cookies_path: Path | None = None,
 ) -> Source:
     """Download a YouTube video and return a validated source record.
 
@@ -89,6 +90,12 @@ def ingest_youtube(
     import yt_dlp
 
     settings = settings or IngestSettings()
+    if cookies_path is not None and settings.cookies_from_browser:
+        raise IngestError(
+            "Choose either browser cookies or an uploaded cookies.txt file, not both."
+        )
+    if cookies_path is not None and not cookies_path.is_file():
+        raise IngestError("The uploaded cookies.txt file is no longer available.")
     source_id = new_id()
     target_dir = paths.source_media_dir(source_id)
     target_dir.mkdir(parents=True, exist_ok=True)
@@ -125,7 +132,9 @@ def ingest_youtube(
             metadata = ydl.extract_info(url, download=True)
     except yt_dlp.utils.DownloadError as exc:
         shutil.rmtree(target_dir, ignore_errors=True)
-        raise _translate_ytdlp_error(exc, settings) from exc
+        raise _translate_ytdlp_error(
+            exc, settings, cookies_file=cookies_path is not None
+        ) from exc
     except Exception as exc:
         shutil.rmtree(target_dir, ignore_errors=True)
         raise IngestError(f"Could not download {url}: {exc}") from exc
@@ -154,12 +163,23 @@ def ingest_youtube(
     )
 
 
-def _translate_ytdlp_error(exc: Exception, settings: IngestSettings) -> IngestError:
+def _translate_ytdlp_error(
+    exc: Exception,
+    settings: IngestSettings,
+    *,
+    cookies_file: bool = False,
+) -> IngestError:
     """Turn a yt-dlp failure into something the user can act on."""
     message = str(exc).lower()
 
     if any(marker in message for marker in _BOT_CHECK_MARKERS):
-        if settings.cookies_from_browser:
+        if cookies_file:
+            hint = (
+                "The uploaded cookies were rejected or have expired. Export a fresh "
+                "Netscape/Mozilla cookies.txt from a browser where you are signed in "
+                "to YouTube, then try again."
+            )
+        elif settings.cookies_from_browser:
             hint = (
                 f"Cookies are already being read from {settings.cookies_from_browser}, but "
                 "YouTube still refused. Make sure you are signed in to YouTube in that "

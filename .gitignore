@@ -48,3 +48,8 @@ desktop.ini
 .env
 .env.*
 !.env.example
+
+# YouTube authentication cookies — never commit
+cookies.txt
+youtube_cookies.txt
+*.cookies.txt
