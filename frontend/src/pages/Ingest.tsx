@@ -112,7 +112,7 @@ export function Ingest() {
           </form>
 
           <p className="mt-3 text-xs leading-relaxed text-ink-500">
-            Only download video you own or have the rights to process.
+            Paste a YouTube link to get started.
           </p>
 
           <div className="mt-7 max-w-xl">

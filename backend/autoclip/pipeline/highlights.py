@@ -135,7 +135,12 @@ async def detect(
 
     log.info("Detecting highlights across %d window(s) with %s.", len(windows), provider.name)
 
-    concurrency = LOCAL_CONCURRENCY if provider.name == "ollama" else HOSTED_CONCURRENCY
+    if provider.name == "ollama":
+        concurrency = LOCAL_CONCURRENCY
+    elif provider.name == "groq":
+        concurrency = 1
+    else:
+        concurrency = HOSTED_CONCURRENCY
     semaphore = asyncio.Semaphore(concurrency)
     completed = 0
     lock = asyncio.Lock()
